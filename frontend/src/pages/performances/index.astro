@@ -23,7 +23,10 @@ import AppLayout from "../../layouts/AppLayout.astro"
       </select>
       entries
     </label>
-    <p id="result-range">Loading performances…</p>
+    <div class="table-meta">
+      <p id="result-range">Loading performances…</p>
+      <div class="pagination" id="pagination"></div>
+    </div>
   </section>
 
   <section class="table-card" aria-live="polite">
@@ -48,7 +51,6 @@ import AppLayout from "../../layouts/AppLayout.astro"
       </table>
     </div>
     <div id="empty-state" class="empty-state" hidden>No performances found.</div>
-    <div class="pagination" id="pagination"></div>
   </section>
 </AppLayout>
 

@@ -5,6 +5,13 @@ import AppLayout from "../layouts/AppLayout.astro"
 <AppLayout title="Rankings" active="rankings">
   <section class="page-heading rankings-heading">
     <div><h1>Rankings</h1><p>Explore the top players in World Cup 2026 across key performance metrics.</p></div>
+    <label class="sort-control">Sort by
+      <select id="ranking-sort">
+        <option value="goals">Goals</option>
+        <option value="assists">Assists</option>
+        <option value="rating">Rating</option>
+      </select>
+    </label>
   </section>
 
   <section class="table-card ranking-card" aria-live="polite">
@@ -26,6 +33,7 @@ import AppLayout from "../layouts/AppLayout.astro"
 <script>
   const apiUrl = "http://localhost:3001/api"
   const rows = document.querySelector<HTMLTableSectionElement>("#ranking-rows")!
+  const select = document.querySelector<HTMLSelectElement>("#ranking-sort")!
   const sortButtons = document.querySelectorAll<HTMLButtonElement>(".table-sort")
   let sortBy = "goals"
   let sortOrder: "asc" | "desc" = "desc"
@@ -40,6 +48,8 @@ import AppLayout from "../layouts/AppLayout.astro"
       header.setAttribute("aria-sort", isActive ? (sortOrder === "asc" ? "ascending" : "descending") : "none")
       indicator.textContent = isActive ? (sortOrder === "asc" ? "↑" : "↓") : "↕"
     }
+
+    if (["goals", "assists", "rating"].includes(sortBy)) select.value = sortBy
   }
 
   async function loadRankings() {
@@ -64,6 +74,12 @@ import AppLayout from "../layouts/AppLayout.astro"
       loadRankings()
     })
   }
+  select.addEventListener("change", () => {
+    sortBy = select.value
+    sortOrder = "desc"
+    updateSortControls()
+    loadRankings()
+  })
   updateSortControls()
   loadRankings()
 </script>
