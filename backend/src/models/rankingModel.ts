@@ -1,18 +1,22 @@
 import { pool } from "../config/database.js"
 
 const sortColumns = {
+  player: "players.player_name",
+  team: "players.team",
+  matches: "matches_played",
   goals: "total_goals",
   assists: "total_assists",
   rating: "average_rating",
 } as const
 
 export type RankingSort = keyof typeof sortColumns
+export type RankingSortOrder = "asc" | "desc"
 
 export function isRankingSort(value: string): value is RankingSort {
   return value in sortColumns
 }
 
-export async function findRankings(sortBy: RankingSort) {
+export async function findRankings(sortBy: RankingSort, sortOrder: RankingSortOrder) {
   const sortColumn = sortColumns[sortBy]
 
   const result = await pool.query(
@@ -25,7 +29,7 @@ export async function findRankings(sortBy: RankingSort) {
      FROM players
      JOIN performances ON players.player_id = performances.player_id
      GROUP BY players.player_id, players.player_name, players.team
-     ORDER BY ${sortColumn} DESC, players.player_name ASC
+     ORDER BY ${sortColumn} ${sortOrder} NULLS LAST, players.player_name ASC
      LIMIT 10`,
   )
 

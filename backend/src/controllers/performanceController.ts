@@ -7,6 +7,8 @@ import {
   deletePerformance,
   findPerformanceById,
   findPerformances,
+  isPerformanceSort,
+  type SortOrder,
   updatePerformance,
 } from "../models/performanceModel.js"
 
@@ -23,13 +25,17 @@ export async function getPerformances(req: Request, res: Response, next: NextFun
     const limit = Math.min(parsePositiveInteger(req.query.limit, DEFAULT_LIMIT), MAX_LIMIT)
     const page = parsePositiveInteger(req.query.page, 1)
     const search = typeof req.query.search === "string" ? req.query.search : ""
+    const requestedSort = typeof req.query.sortBy === "string" ? req.query.sortBy : "matchDate"
+    const sortBy = isPerformanceSort(requestedSort) ? requestedSort : "matchDate"
+    const sortOrder: SortOrder = req.query.sortOrder === "asc" ? "asc" : "desc"
     const offset = (page - 1) * limit
-    const performances = await findPerformances(limit, offset, search)
+    const performances = await findPerformances(limit, offset, search, sortBy, sortOrder)
     const total = await countPerformances(search)
 
     res.json({
       data: performances,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      sort: { by: sortBy, order: sortOrder },
     })
   } catch (error) {
     next(error)

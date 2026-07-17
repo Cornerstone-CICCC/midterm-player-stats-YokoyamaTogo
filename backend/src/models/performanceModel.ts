@@ -45,6 +45,27 @@ const performanceColumns = `
   offensive_contribution, defensive_contribution
 `
 
+const performanceSortColumns = {
+  player: "players.player_name",
+  team: "players.team",
+  opponent: "performances.opponent_team",
+  matchDate: "matches.match_date",
+  position: "players.position",
+  minutes: "performances.minutes_played",
+  goals: "performances.goals",
+  assists: "performances.assists",
+  shots: "performances.shots",
+  passAccuracy: "performances.pass_accuracy",
+  rating: "performances.player_rating",
+} as const
+
+export type PerformanceSort = keyof typeof performanceSortColumns
+export type SortOrder = "asc" | "desc"
+
+export function isPerformanceSort(value: string): value is PerformanceSort {
+  return value in performanceSortColumns
+}
+
 function performanceValues(performance: PerformanceInput) {
   return [
     performance.opponentTeam,
@@ -80,7 +101,15 @@ function performanceValues(performance: PerformanceInput) {
   ]
 }
 
-export async function findPerformances(limit: number, offset: number, search: string) {
+export async function findPerformances(
+  limit: number,
+  offset: number,
+  search: string,
+  sortBy: PerformanceSort,
+  sortOrder: SortOrder,
+) {
+  const sortColumn = performanceSortColumns[sortBy]
+
   const result = await pool.query(
     `SELECT
        performances.id, performances.player_id, performances.match_id,
@@ -92,7 +121,7 @@ export async function findPerformances(limit: number, offset: number, search: st
      JOIN players ON performances.player_id = players.player_id
      JOIN matches ON performances.match_id = matches.match_id
      WHERE players.player_name ILIKE $1
-     ORDER BY matches.match_date DESC, players.player_name ASC
+     ORDER BY ${sortColumn} ${sortOrder} NULLS LAST, performances.id ASC
      LIMIT $2 OFFSET $3`,
     [`%${search}%`, limit, offset],
   )

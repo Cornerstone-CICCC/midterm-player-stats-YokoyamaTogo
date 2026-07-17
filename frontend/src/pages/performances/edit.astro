@@ -29,8 +29,8 @@ const metrics = [
 
     <section class="metric-card match-fields" id="new-performance-fields" hidden>
       <h2>New Performance</h2>
-      <label>Player ID<input name="playerId" required placeholder="e.g. P00001" /></label>
-      <label>Match ID<input name="matchId" required placeholder="e.g. M00001" /></label>
+      <label>Player ID<input name="playerId" required disabled placeholder="e.g. P00001" /></label>
+      <label>Match ID<input name="matchId" required disabled placeholder="e.g. M00001" /></label>
     </section>
 
     <section class="metric-card match-fields">
@@ -110,6 +110,8 @@ const metrics = [
       document.querySelector("#match-summary")!.textContent = "Match details appear after saving"
       document.querySelector("#submit-button")!.textContent = "Add Performance"
       newFields.hidden = false
+      input("playerId").disabled = false
+      input("matchId").disabled = false
       deleteButton.hidden = true
       return
     }
