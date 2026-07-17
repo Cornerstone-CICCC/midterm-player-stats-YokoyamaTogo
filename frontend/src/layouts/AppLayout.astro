@@ -1,0 +1,41 @@
+---
+import "../styles/global.css"
+
+type Props = {
+  title: string
+  active: "performances" | "rankings"
+}
+
+const { title, active } = Astro.props
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} | World Cup 2026</title>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a class="brand" href="/performances">
+        <span class="brand-icon">♜</span>
+        <span><b>WORLD CUP 2026</b><small>PLAYER PERFORMANCE<br />EXPLORER</small></span>
+      </a>
+
+      <nav class="main-nav" aria-label="Main navigation">
+        <a class:list={["nav-link", { active: active === "performances" }]} href="/performances">
+          <span>▥</span> Performances
+        </a>
+        <a class:list={["nav-link", { active: active === "rankings" }]} href="/rankings">
+          <span>☆</span> Rankings
+        </a>
+      </nav>
+
+      <p class="sidebar-footer">🏆 <span>World Cup 2026<br /><small>Go for Glory</small></span></p>
+    </aside>
+    <main class="page-content">
+      <slot />
+    </main>
+  </body>
+</html>

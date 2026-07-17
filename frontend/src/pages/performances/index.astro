@@ -1,0 +1,138 @@
+---
+import AppLayout from "../../layouts/AppLayout.astro"
+---
+
+<AppLayout title="Player Performances" active="performances">
+  <section class="page-heading performance-heading">
+    <h1>Player Performances</h1>
+    <div class="heading-actions">
+      <label class="search-box">
+        <span>⌕</span>
+        <input id="search" type="search" placeholder="Search players..." />
+      </label>
+      <a class="button primary" href="/performances/edit?mode=new">＋ Add Performance</a>
+    </div>
+  </section>
+
+  <section class="toolbar" aria-label="Performance table controls">
+    <label>Show
+      <select id="limit">
+        <option value="10">10</option>
+        <option value="25" selected>25</option>
+        <option value="50">50</option>
+      </select>
+      entries
+    </label>
+    <p id="result-range">Loading performances…</p>
+  </section>
+
+  <section class="table-card" aria-live="polite">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Player</th><th>Team</th><th>Opponent</th><th>Match Date</th><th>Position</th>
+            <th>Min</th><th>Goals</th><th>Assists</th><th>Shots</th><th>Pass Accuracy</th><th>Rating</th>
+          </tr>
+        </thead>
+        <tbody id="performance-rows"></tbody>
+      </table>
+    </div>
+    <div id="empty-state" class="empty-state" hidden>No performances found.</div>
+    <div class="pagination" id="pagination"></div>
+  </section>
+</AppLayout>
+
+<script>
+  const apiUrl = "http://localhost:3001/api"
+  const search = document.querySelector<HTMLInputElement>("#search")!
+  const limit = document.querySelector<HTMLSelectElement>("#limit")!
+  const rows = document.querySelector<HTMLTableSectionElement>("#performance-rows")!
+  const range = document.querySelector<HTMLParagraphElement>("#result-range")!
+  const pagination = document.querySelector<HTMLDivElement>("#pagination")!
+  const emptyState = document.querySelector<HTMLDivElement>("#empty-state")!
+  let currentPage = 1
+  let searchTimer: number | undefined
+
+  const formatDate = (value: string) => new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+  }).format(new Date(value))
+
+  function initials(name: string) {
+    return name.split(" ").slice(0, 2).map((part) => part[0]).join("")
+  }
+
+  function renderPagination(totalPages: number) {
+    pagination.innerHTML = ""
+    if (totalPages <= 1) return
+
+    const previous = document.createElement("button")
+    previous.textContent = "‹"
+    previous.disabled = currentPage === 1
+    previous.addEventListener("click", () => loadPerformances(currentPage - 1))
+    pagination.append(previous)
+
+    for (let page = 1; page <= Math.min(totalPages, 5); page += 1) {
+      const button = document.createElement("button")
+      button.textContent = String(page)
+      button.classList.toggle("selected", page === currentPage)
+      button.addEventListener("click", () => loadPerformances(page))
+      pagination.append(button)
+    }
+
+    const next = document.createElement("button")
+    next.textContent = "›"
+    next.disabled = currentPage === totalPages
+    next.addEventListener("click", () => loadPerformances(currentPage + 1))
+    pagination.append(next)
+  }
+
+  async function loadPerformances(page = 1) {
+    currentPage = page
+    rows.innerHTML = `<tr><td colspan="11" class="loading-row">Loading…</td></tr>`
+
+    const params = new URLSearchParams({
+      page: String(currentPage),
+      limit: limit.value,
+      search: search.value.trim(),
+    })
+    const response = await fetch(`${apiUrl}/performances?${params}`)
+    const { data, pagination: meta } = await response.json()
+    rows.innerHTML = ""
+    emptyState.hidden = data.length > 0
+
+    const start = meta.total === 0 ? 0 : (meta.page - 1) * meta.limit + 1
+    const end = Math.min(meta.page * meta.limit, meta.total)
+    range.textContent = `${start}–${end} of ${meta.total.toLocaleString()}`
+
+    for (const performance of data) {
+      const row = document.createElement("tr")
+      row.tabIndex = 0
+      row.className = "clickable-row"
+      row.innerHTML = `
+        <td><span class="avatar">${initials(performance.player_name)}</span><span class="player-name"><b>${performance.player_name}</b><small>${performance.position ?? "—"}</small></span></td>
+        <td>${performance.team ?? "—"}</td>
+        <td>${performance.opponent_team ?? "—"}</td>
+        <td>${formatDate(performance.match_date)}</td>
+        <td>${performance.position ?? "—"}</td>
+        <td>${performance.minutes_played ?? "—"}</td>
+        <td>${performance.goals ?? 0}</td>
+        <td>${performance.assists ?? 0}</td>
+        <td>${performance.shots ?? 0}</td>
+        <td>${performance.pass_accuracy ? `${Math.round(Number(performance.pass_accuracy) * 100)}%` : "—"}</td>
+        <td><span class="rating">${performance.player_rating ?? "—"}</span></td>`
+      const openEditor = () => window.location.assign(`/performances/edit?id=${performance.id}`)
+      row.addEventListener("click", openEditor)
+      row.addEventListener("keydown", (event) => event.key === "Enter" && openEditor())
+      rows.append(row)
+    }
+    renderPagination(meta.totalPages)
+  }
+
+  search.addEventListener("input", () => {
+    window.clearTimeout(searchTimer)
+    searchTimer = window.setTimeout(() => loadPerformances(1), 250)
+  })
+  limit.addEventListener("change", () => loadPerformances(1))
+  loadPerformances()
+</script>

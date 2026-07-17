@@ -1,0 +1,159 @@
+---
+import AppLayout from "../../layouts/AppLayout.astro"
+
+const metrics = [
+  ["Attacking", [["Goals", "goals"], ["Assists", "assists"], ["Shots", "shots"], ["Shots on Target", "shotsOnTarget"], ["Key Passes", "keyPasses"], ["Successful Dribbles", "successfulDribbles"], ["Crosses (Acc.)", "successfulCrosses"]]],
+  ["Defensive", [["Tackles", "tackles"], ["Interceptions", "interceptions"], ["Blocks", "blocks"], ["Clearances", "clearances"], ["Duels Won", "aerialDuelsWon"], ["Duels Lost", "aerialDuelsLost"], ["Fouls Committed", "foulsCommitted"], ["Fouls Drawn", "foulsSuffered"]]],
+  ["Physical", [["Minutes Played", "minutesPlayed"], ["Distance (km)", "distanceCoveredKm"], ["Sprint Distance (km)", "sprintDistanceKm"], ["Top Speed (km/h)", "topSpeedKmh"], ["Accelerations", "accelerations"], ["Decelerations", "decelerations"], ["Stamina", "staminaScore"]]],
+  ["Ratings", [["Match Rating (1–10)", "playerRating"], ["Attacking (1–10)", "offensiveContribution"], ["Defensive (1–10)", "defensiveContribution"], ["Overall Impact (1–10)", "performanceScore"]]],
+]
+---
+
+<AppLayout title="Edit Performance" active="performances">
+  <a class="back-link" href="/performances">← Back to Performances</a>
+  <section class="edit-heading">
+    <h1 id="page-title">Edit Performance</h1>
+    <button id="delete-button" class="button danger" type="button">⌫ Delete</button>
+  </section>
+
+  <div id="message" class="message" hidden></div>
+  <form id="performance-form">
+    <section class="identity-card">
+      <div class="large-avatar" id="player-initials">PP</div>
+      <div>
+        <h2 id="player-name">Loading performance…</h2>
+        <p id="player-info">Select a performance to edit</p>
+      </div>
+      <div class="match-summary" id="match-summary"></div>
+    </section>
+
+    <section class="metric-card match-fields" id="new-performance-fields" hidden>
+      <h2>New Performance</h2>
+      <label>Player ID<input name="playerId" required placeholder="e.g. P00001" /></label>
+      <label>Match ID<input name="matchId" required placeholder="e.g. M00001" /></label>
+    </section>
+
+    <section class="metric-card match-fields">
+      <h2>Match Result</h2>
+      <label>Opponent<input name="opponentTeam" /></label>
+      <label>Result<input name="matchResult" maxlength="1" placeholder="W, D, or L" /></label>
+      <label>Team Goals<input name="goalsTeam" type="number" min="0" /></label>
+      <label>Opponent Goals<input name="goalsOpponent" type="number" min="0" /></label>
+    </section>
+
+    <div class="metrics-grid">
+      {metrics.map(([title, fields]) => (
+        <section class="metric-card">
+          <h2>{title}</h2>
+          <div class="field-grid">
+            {fields.map(([label, name]) => (
+              <label>{label}<input name={name} type="number" min="0" step="any" /></label>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+
+    <footer class="form-actions">
+      <a class="button secondary" href="/performances">Cancel</a>
+      <button class="button primary" id="submit-button" type="submit">Update Performance</button>
+    </footer>
+  </form>
+</AppLayout>
+
+<script>
+  const apiUrl = "http://localhost:3001/api"
+  const form = document.querySelector<HTMLFormElement>("#performance-form")!
+  const params = new URLSearchParams(window.location.search)
+  const id = params.get("id")
+  const isNew = params.get("mode") === "new"
+  const message = document.querySelector<HTMLDivElement>("#message")!
+  const deleteButton = document.querySelector<HTMLButtonElement>("#delete-button")!
+  const newFields = document.querySelector<HTMLElement>("#new-performance-fields")!
+
+  const fields: Record<string, string> = {
+    opponentTeam: "opponent_team", matchResult: "match_result", goalsTeam: "goals_team", goalsOpponent: "goals_opponent",
+    minutesPlayed: "minutes_played", goals: "goals", assists: "assists", shots: "shots", shotsOnTarget: "shots_on_target",
+    keyPasses: "key_passes", successfulDribbles: "successful_dribbles", successfulCrosses: "successful_crosses",
+    tackles: "tackles", interceptions: "interceptions", blocks: "blocks", clearances: "clearances",
+    aerialDuelsWon: "aerial_duels_won", aerialDuelsLost: "aerial_duels_lost", foulsCommitted: "fouls_committed",
+    foulsSuffered: "fouls_suffered", distanceCoveredKm: "distance_covered_km", sprintDistanceKm: "sprint_distance_km",
+    topSpeedKmh: "top_speed_kmh", accelerations: "accelerations", decelerations: "decelerations", staminaScore: "stamina_score",
+    playerRating: "player_rating", performanceScore: "performance_score", offensiveContribution: "offensive_contribution",
+    defensiveContribution: "defensive_contribution",
+  }
+
+  const initials = (name: string) => name.split(" ").slice(0, 2).map((word) => word[0]).join("")
+  const input = (name: string) => form.elements.namedItem(name) as HTMLInputElement
+  const showMessage = (text: string, isError = false) => {
+    message.textContent = text
+    message.hidden = false
+    message.classList.toggle("error", isError)
+  }
+
+  function populate(performance: Record<string, string | number | null>) {
+    document.querySelector("#player-name")!.textContent = String(performance.player_name)
+    document.querySelector("#player-info")!.textContent = `#${performance.jersey_number ?? "—"} · ${performance.position ?? "—"} · ${performance.team ?? "—"}`
+    document.querySelector("#player-initials")!.textContent = initials(String(performance.player_name))
+    document.querySelector("#match-summary")!.innerHTML = `<b>${performance.team} vs ${performance.opponent_team}</b><span>${String(performance.match_date).slice(0, 10)} · ${performance.stadium ?? "Venue unknown"}</span>`
+    for (const [formName, apiName] of Object.entries(fields)) {
+      const value = performance[apiName]
+      input(formName).value = value == null ? "" : String(value)
+    }
+  }
+
+  async function loadPerformance() {
+    if (isNew) {
+      document.querySelector("#page-title")!.textContent = "Add Performance"
+      document.querySelector("#player-name")!.textContent = "New performance"
+      document.querySelector("#player-info")!.textContent = "Enter an existing player and match ID"
+      document.querySelector("#match-summary")!.textContent = "Match details appear after saving"
+      document.querySelector("#submit-button")!.textContent = "Add Performance"
+      newFields.hidden = false
+      deleteButton.hidden = true
+      return
+    }
+    if (!id) {
+      showMessage("Choose a performance from the list first.", true)
+      return
+    }
+    const response = await fetch(`${apiUrl}/performances/${id}`)
+    if (!response.ok) throw new Error("Performance could not be loaded")
+    const { data } = await response.json()
+    populate(data)
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault()
+    const data: Record<string, string | number> = {}
+    for (const [key, value] of new FormData(form)) {
+      const stringValue = String(value).trim()
+      if (stringValue === "") continue
+      data[key] = ["opponentTeam", "matchResult", "playerId", "matchId"].includes(key) ? stringValue : Number(stringValue)
+    }
+    const response = await fetch(isNew ? `${apiUrl}/performances` : `${apiUrl}/performances/${id}`, {
+      method: isNew ? "POST" : "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
+    if (!response.ok) {
+      showMessage("Could not save the performance. Check the player and match IDs.", true)
+      return
+    }
+    if (isNew) {
+      const { data: created } = await response.json()
+      window.location.assign(`/performances/edit?id=${created.id}`)
+      return
+    }
+    showMessage("Performance updated.")
+  })
+
+  deleteButton.addEventListener("click", async () => {
+    if (!id || !window.confirm("Delete this performance?")) return
+    const response = await fetch(`${apiUrl}/performances/${id}`, { method: "DELETE" })
+    if (response.ok) window.location.assign("/performances")
+    else showMessage("Could not delete the performance.", true)
+  })
+
+  loadPerformance().catch((error) => showMessage(error.message, true))
+</script>

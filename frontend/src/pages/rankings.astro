@@ -1,0 +1,40 @@
+---
+import AppLayout from "../layouts/AppLayout.astro"
+---
+
+<AppLayout title="Rankings" active="rankings">
+  <section class="page-heading rankings-heading">
+    <div><h1>Rankings</h1><p>Explore the top players in World Cup 2026 across key performance metrics.</p></div>
+    <label class="sort-control">Sort by
+      <select id="ranking-sort"><option value="goals">Goals</option><option value="assists">Assists</option><option value="rating">Rating</option></select>
+    </label>
+  </section>
+
+  <section class="table-card ranking-card" aria-live="polite">
+    <table>
+      <thead><tr><th>Rank</th><th>Player</th><th>Team</th><th>Matches Played</th><th>Total Goals</th><th>Total Assists</th><th>Rating</th></tr></thead>
+      <tbody id="ranking-rows"><tr><td colspan="7" class="loading-row">Loading rankings…</td></tr></tbody>
+    </table>
+  </section>
+</AppLayout>
+
+<script>
+  const apiUrl = "http://localhost:3001/api"
+  const select = document.querySelector<HTMLSelectElement>("#ranking-sort")!
+  const rows = document.querySelector<HTMLTableSectionElement>("#ranking-rows")!
+  const initials = (name: string) => name.split(" ").slice(0, 2).map((part) => part[0]).join("")
+
+  async function loadRankings() {
+    rows.innerHTML = `<tr><td colspan="7" class="loading-row">Loading rankings…</td></tr>`
+    const response = await fetch(`${apiUrl}/rankings?sortBy=${select.value}`)
+    const { data } = await response.json()
+    rows.innerHTML = ""
+    data.forEach((player: Record<string, string>, index: number) => {
+      const row = document.createElement("tr")
+      row.innerHTML = `<td class="rank-number">${index + 1}</td><td><span class="avatar rank-avatar">${initials(player.player_name)}</span><span class="player-name"><b>${player.player_name}</b><small>${player.team}</small></span></td><td>${player.team}</td><td>${player.matches_played}</td><td class="total">${player.total_goals}</td><td>${player.total_assists}</td><td><span class="rating">${player.average_rating}</span></td>`
+      rows.append(row)
+    })
+  }
+  select.addEventListener("change", loadRankings)
+  loadRankings()
+</script>
